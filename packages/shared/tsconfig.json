@@ -2,9 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "noEmit": true
+    "module": "CommonJS",
+    "moduleResolution": "Node10",
+    "declaration": true,
+    "outDir": "dist"
   },
   "include": ["src"]
 }

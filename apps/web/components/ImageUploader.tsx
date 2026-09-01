@@ -14,6 +14,8 @@ export function ImageUploader({
 }) {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -29,19 +31,39 @@ export function ImageUploader({
     onImageCaptured(dataUrl);
   }
 
-  async function startCamera() {
+  async function startCamera(deviceId?: string) {
     setCameraError(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // No specific device requested yet: prefer the rear/environment camera
+      // on phones. Once we know what devices exist (after permission is
+      // granted, below), the picker lets you target a specific one — e.g. a
+      // USB webcam instead of a laptop's built-in one, which facingMode
+      // can't reliably distinguish on desktop.
+      const constraints: MediaStreamConstraints = {
+        video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: "environment" } },
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
       setCameraActive(true);
+
+      const activeDeviceId = stream.getVideoTracks()[0]?.getSettings().deviceId ?? null;
+      setSelectedDeviceId(activeDeviceId);
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      setVideoDevices(devices.filter((d) => d.kind === "videoinput"));
     } catch {
       setCameraError("Could not access camera.");
     }
+  }
+
+  function handleDeviceChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    startCamera(e.target.value);
   }
 
   function stopCamera() {
@@ -70,13 +92,26 @@ export function ImageUploader({
           />
         </label>
         {!cameraActive ? (
-          <button type="button" onClick={startCamera} className="rounded border px-3 py-2 text-sm">
+          <button type="button" onClick={() => startCamera()} className="rounded border px-3 py-2 text-sm">
             Use Camera
           </button>
         ) : (
           <button type="button" onClick={stopCamera} className="rounded border px-3 py-2 text-sm">
             Cancel Camera
           </button>
+        )}
+        {cameraActive && videoDevices.length > 1 && (
+          <select
+            value={selectedDeviceId ?? ""}
+            onChange={handleDeviceChange}
+            className="rounded border px-2 py-2 text-sm"
+          >
+            {videoDevices.map((device, i) => (
+              <option key={device.deviceId} value={device.deviceId}>
+                {device.label || `Camera ${i + 1}`}
+              </option>
+            ))}
+          </select>
         )}
       </div>
 

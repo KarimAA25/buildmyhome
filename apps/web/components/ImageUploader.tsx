@@ -82,18 +82,20 @@ export function ImageUploader({
 
       {cameraError && <p className="text-sm text-red-600">{cameraError}</p>}
 
-      {cameraActive && (
-        <div className="flex flex-col gap-2">
-          <video ref={videoRef} className="max-w-sm rounded" muted playsInline />
-          <button
-            type="button"
-            onClick={capturePhoto}
-            className="w-fit rounded bg-neutral-800 px-3 py-2 text-sm text-white"
-          >
-            Capture Photo
-          </button>
-        </div>
-      )}
+      {/* Always mounted (never conditionally rendered) so videoRef.current is
+          available the moment startCamera() needs to attach the stream —
+          conditionally rendering this on cameraActive meant the stream was
+          being attached to a ref that didn't exist yet. */}
+      <div className={cameraActive ? "flex flex-col gap-2" : "hidden"}>
+        <video ref={videoRef} className="max-w-sm rounded" muted playsInline />
+        <button
+          type="button"
+          onClick={capturePhoto}
+          className="w-fit rounded bg-neutral-800 px-3 py-2 text-sm text-white"
+        >
+          Capture Photo
+        </button>
+      </div>
 
       {image && !cameraActive && (
         <img src={image} alt="Room preview" className="max-w-sm rounded border" />

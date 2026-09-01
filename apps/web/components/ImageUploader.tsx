@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { fileToDataUrl } from "@/lib/fileToDataUrl";
+import { resizeImageFile, resizeVideoFrame } from "@/lib/resizeImage";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
@@ -15,7 +15,6 @@ export function ImageUploader({
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -26,7 +25,7 @@ export function ImageUploader({
       return;
     }
     setCameraError(null);
-    const dataUrl = await fileToDataUrl(file);
+    const dataUrl = await resizeImageFile(file);
     onImageCaptured(dataUrl);
   }
 
@@ -53,14 +52,8 @@ export function ImageUploader({
 
   function capturePhoto() {
     const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.drawImage(video, 0, 0);
-    onImageCaptured(canvas.toDataURL("image/png"));
+    if (!video) return;
+    onImageCaptured(resizeVideoFrame(video));
     stopCamera();
   }
 
@@ -101,7 +94,6 @@ export function ImageUploader({
           </button>
         </div>
       )}
-      <canvas ref={canvasRef} className="hidden" />
 
       {image && !cameraActive && (
         <img src={image} alt="Room preview" className="max-w-sm rounded border" />

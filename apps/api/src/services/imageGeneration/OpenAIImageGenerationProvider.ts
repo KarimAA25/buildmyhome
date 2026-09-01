@@ -37,6 +37,12 @@ export class OpenAIImageGenerationProvider implements ImageGenerationService {
       model: env.IMAGE_MODEL,
       image: file,
       prompt: buildPrompt(designSpecification),
+      // Keep the output small — this image flows back through a Vercel
+      // Route Handler on every subsequent modify call, which caps request
+      // and response bodies at 4.5MB regardless of plan.
+      size: "1024x1024",
+      output_format: "jpeg",
+      output_compression: 80,
     });
 
     const b64 = response.data?.[0]?.b64_json;
@@ -44,6 +50,6 @@ export class OpenAIImageGenerationProvider implements ImageGenerationService {
       throw new Error("ImageGenerationService: OpenAI returned no image data");
     }
 
-    return `data:image/png;base64,${b64}`;
+    return `data:image/jpeg;base64,${b64}`;
   }
 }

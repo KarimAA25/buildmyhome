@@ -17,6 +17,7 @@ export async function generateValidatedImage(
   imageValidation: ImageValidationService,
   baseImage: string,
   designSpecification: DesignSpecification,
+  userInstruction: string,
   maxRetries: number,
   onProgress?: (state: ProgressState) => void
 ): Promise<ValidatedImageResult> {
@@ -25,7 +26,7 @@ export async function generateValidatedImage(
 
   for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
     onProgress?.("GENERATING_IMAGE");
-    const image = await imageGeneration.generate(baseImage, designSpecification);
+    const image = await imageGeneration.generate(baseImage, designSpecification, userInstruction);
 
     onProgress?.("VALIDATING");
     const result = await imageValidation.validate(image, designSpecification);

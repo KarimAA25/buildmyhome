@@ -5,6 +5,14 @@ import { resizeImageFile, resizeVideoFrame } from "@/lib/resizeImage";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
+// Phones/tablets report multiple cameras too (front, back, sometimes more),
+// but facingMode already picks the right one there — a device picker only
+// makes sense on desktop, where facingMode is meaningless and the choice is
+// genuinely ambiguous (built-in webcam vs. a plugged-in USB camera).
+function isMobileDevice(): boolean {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
 export function ImageUploader({
   image,
   onImageCaptured,
@@ -100,7 +108,7 @@ export function ImageUploader({
             Cancel Camera
           </button>
         )}
-        {cameraActive && videoDevices.length > 1 && (
+        {cameraActive && !isMobileDevice() && videoDevices.length > 1 && (
           <select
             value={selectedDeviceId ?? ""}
             onChange={handleDeviceChange}

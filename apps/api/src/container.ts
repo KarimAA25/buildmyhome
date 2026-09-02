@@ -12,6 +12,8 @@ import { StubImageGenerationProvider } from "./services/imageGeneration/StubImag
 import { OpenAIImageGenerationProvider } from "./services/imageGeneration/OpenAIImageGenerationProvider";
 import { NoOpImageValidationProvider } from "./services/imageValidation/NoOpImageValidationProvider";
 import { OpenAIImageValidationProvider } from "./services/imageValidation/OpenAIImageValidationProvider";
+import { NoOpImageDiffProvider } from "./services/imageDiff/NoOpImageDiffProvider";
+import { OpenAIImageDiffProvider } from "./services/imageDiff/OpenAIImageDiffProvider";
 import { NoOpPersistenceProvider } from "./services/persistence/NoOpPersistenceProvider";
 import { InlineBase64StorageProvider } from "./services/storage/InlineBase64StorageProvider";
 import { ConsoleLoggingAIUsageProvider } from "./services/aiUsage/ConsoleLoggingAIUsageProvider";
@@ -35,6 +37,7 @@ export const services = {
   quotation: new DeterministicQuotationProvider(),
   imageGeneration: hasImageConfig ? new OpenAIImageGenerationProvider() : new StubImageGenerationProvider(),
   imageValidation: hasReasoningConfig ? new OpenAIImageValidationProvider() : new NoOpImageValidationProvider(),
+  imageDiff: hasReasoningConfig ? new OpenAIImageDiffProvider() : new NoOpImageDiffProvider(),
   persistence: new NoOpPersistenceProvider(),
   storage: new InlineBase64StorageProvider(),
   aiUsage: new ConsoleLoggingAIUsageProvider(),

@@ -23,6 +23,8 @@ type DesignVersion = {
   changeRequest: string | null;
 };
 
+const MAX_VERSIONS = 3;
+
 export default function WorkspacePage() {
   const [image, setImage] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
@@ -37,7 +39,8 @@ export default function WorkspacePage() {
   const viewedVersion = versions[viewedVersionIndex] ?? currentVersion;
   const isViewingLatest = viewedVersion === currentVersion;
   const canGenerate = Boolean(image) && prompt.trim().length > 0 && !isGenerating;
-  const canModify = Boolean(currentVersion) && changeRequest.trim().length > 0 && !isGenerating;
+  const atMaxVersions = versions.length >= MAX_VERSIONS;
+  const canModify = Boolean(currentVersion) && changeRequest.trim().length > 0 && !isGenerating && !atMaxVersions;
 
   async function handleGenerate() {
     if (!image) return;
@@ -142,16 +145,24 @@ export default function WorkspacePage() {
             </p>
           )}
 
-          <PromptInput value={changeRequest} onChange={setChangeRequest} />
+          {atMaxVersions ? (
+            <p className="text-xs text-neutral-400">
+              Maximum of {MAX_VERSIONS} versions reached for this session.
+            </p>
+          ) : (
+            <PromptInput value={changeRequest} onChange={setChangeRequest} />
+          )}
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleModify}
-              disabled={!canModify}
-              className="w-fit rounded bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-40"
-            >
-              Request a Change
-            </button>
+            {!atMaxVersions && (
+              <button
+                type="button"
+                onClick={handleModify}
+                disabled={!canModify}
+                className="w-fit rounded bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-40"
+              >
+                Request a Change
+              </button>
+            )}
             <button
               type="button"
               onClick={handleStartOver}

@@ -1,7 +1,7 @@
 "use client";
 
 interface VersionSelectorProps {
-  versions: { version: number }[];
+  versions: { versionNumber: number }[];
   selectedIndex: number;
   onSelect: (index: number) => void;
 }
@@ -13,7 +13,7 @@ export function VersionSelector({ versions, selectedIndex, onSelect }: VersionSe
     <div className="flex gap-2">
       {versions.map((v, i) => (
         <button
-          key={v.version}
+          key={v.versionNumber}
           type="button"
           onClick={() => onSelect(i)}
           className={
@@ -22,7 +22,7 @@ export function VersionSelector({ versions, selectedIndex, onSelect }: VersionSe
               : "rounded border px-3 py-1 text-sm text-neutral-600"
           }
         >
-          V{v.version}
+          V{v.versionNumber}
         </button>
       ))}
     </div>

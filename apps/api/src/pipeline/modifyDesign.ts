@@ -2,49 +2,55 @@ import type { DesignModifyRequest, DesignModifyResponse, ProgressState } from "@
 import { services } from "../container";
 import { generateValidatedImage } from "../services/imageGeneration/generateValidatedImage";
 import { refineDetectedItems } from "./refineDetectedItems";
+import { collectSourceUrls } from "./collectSourceUrls";
+import { canCreateAnotherVersion } from "./versionLimit";
+import { DesignNotFoundError, VersionLimitReachedError } from "./errors";
 import { env } from "../config/env";
 
-const CANDIDATE_TOP_K = 6;
-
 export async function modifyDesign(
+  contractorId: string,
+  contractorEmail: string,
   request: DesignModifyRequest,
   onProgress?: (state: ProgressState) => void
 ): Promise<DesignModifyResponse> {
-  onProgress?.("SEARCHING_PRODUCTS");
-  const catalog = await services.catalog.getAll();
-  const queryEmbedding = await services.embedding.embed(
-    `${request.currentDesignSpecification.roomType} ${request.changeRequest}`
-  );
-  const searchResults = await services.productSearch.search(queryEmbedding, catalog, CANDIDATE_TOP_K);
+  const design = await services.persistence.getDesign(request.designId);
+  // A design must never resolve across contractor boundaries (CLAUDE2 §10
+  // rule 6) — from Contractor B's frontend, Contractor A's design simply
+  // doesn't exist.
+  if (!design || design.contractorId !== contractorId) {
+    throw new DesignNotFoundError();
+  }
 
-  // Carry forward products already referenced in the current spec so a change
-  // request scoped to one item can't accidentally un-price an untouched one —
-  // the search above is scoped to the change request text and won't reliably
-  // resurface everything already in the design. (This still matters for
-  // guiding design generation below; the final quote grounding further down
-  // uses the full catalog directly, so it isn't limited by this candidate set.)
-  const existingProductIds = new Set(
-    request.currentDesignSpecification.items
-      .map((item) => item.catalogProductId)
-      .filter((id): id is string => id !== null)
-  );
-  const carriedForward = catalog.filter((product) => existingProductIds.has(product.id));
-  const candidateProducts = [
-    ...carriedForward,
-    ...searchResults.filter((product) => !existingProductIds.has(product.id)),
-  ];
+  const currentVersion = await services.persistence.getLatestVersion(design.id);
+  if (!currentVersion) {
+    throw new DesignNotFoundError();
+  }
+
+  const versionCount = await services.persistence.getVersionCount(design.id);
+  if (!canCreateAnotherVersion(design, versionCount)) {
+    throw new VersionLimitReachedError(design.maxVersions ?? env.MAX_VERSIONS_PER_DESIGN, versionCount);
+  }
+
+  onProgress?.("SEARCHING_PRODUCTS");
+  const candidateProducts = await services.productSourcing.getCandidateProducts(contractorId, {
+    roomType: currentVersion.designSpecification.roomType,
+    requestText: request.changeRequest,
+  });
 
   onProgress?.("CREATING_DESIGN");
   const designSpecification = await services.designGeneration.modify({
-    currentDesignSpecification: request.currentDesignSpecification,
+    currentDesignSpecification: currentVersion.designSpecification,
     changeRequest: request.changeRequest,
     candidateProducts,
   });
 
+  // OpenAI's image-edit call needs real bytes, not a signed URL.
+  const currentImage = await services.storage.retrieveAsBase64(currentVersion.generatedImagePath);
+
   const { image } = await generateValidatedImage(
     services.imageGeneration,
     services.imageValidation,
-    request.currentImage,
+    currentImage,
     designSpecification,
     request.changeRequest,
     env.MAX_IMAGE_GENERATION_RETRIES,
@@ -55,19 +61,46 @@ export async function modifyDesign(
   // image (compared against the previous version's image), not the text
   // design spec — see createDesign.ts for the same reasoning.
   onProgress?.("REVIEWING_RESULT");
-  const detectedItems = await services.imageDiff.detectItems(request.currentImage, image, catalog);
-  const refinedItems = await refineDetectedItems(detectedItems, catalog, services.embedding);
+  const detectedItems = await services.imageDiff.detectItems(currentImage, image, candidateProducts);
+  const refinedItems = await refineDetectedItems(detectedItems, candidateProducts, services.embedding);
   const groundedSpecification = { ...designSpecification, items: refinedItems };
 
   onProgress?.("CALCULATING_QUOTE");
-  const quote = services.quotation.calculate(groundedSpecification, catalog);
+  const quote = services.quotation.calculate(groundedSpecification, candidateProducts);
+  const sourceUrls = collectSourceUrls(groundedSpecification, candidateProducts);
+
+  const nextVersionNumber = currentVersion.versionNumber + 1;
+  const generatedImageRef = await services.storage.store(image, contractorId, design.id, {
+    version: nextVersionNumber,
+  });
+
+  const version = await services.persistence.createVersion({
+    designId: design.id,
+    versionNumber: nextVersionNumber,
+    parentVersionId: currentVersion.id,
+    generatedImagePath: generatedImageRef.path,
+    designSpecification: groundedSpecification,
+    userInstruction: request.changeRequest,
+    sourceUrls,
+    aiModel: env.REASONING_MODEL || null,
+    quote,
+  });
 
   onProgress?.("COMPLETED");
 
+  void services.email.sendGenerationNotifications({
+    contractorEmail,
+    endUserEmail: design.endUserEmail,
+    promptNumber: design.promptNumber,
+    versionNumber: version.versionNumber,
+    quote: version.quote,
+  });
+
   return {
-    designSpecification: groundedSpecification,
-    generatedImage: image,
-    quote,
-    version: request.versionNumber + 1,
+    versionNumber: version.versionNumber,
+    designSpecification: version.designSpecification,
+    generatedImage: generatedImageRef.signedUrl,
+    quote: version.quote,
+    sourceUrls: version.sourceUrls,
   };
 }

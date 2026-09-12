@@ -47,7 +47,7 @@ function formatCandidateList(candidateProducts: CatalogProduct[]): string {
   const list = candidateProducts
     .map(
       (product) =>
-        `- id: ${product.id} | name: ${product.name} | category: ${product.category} | price: ${product.price} ${product.currency ?? "USD"}` +
+        `- id: ${product.id} | name: ${product.name} | category: ${product.category} | price: ${product.price != null ? `${product.price} ${product.currency ?? "USD"}` : "unknown"}` +
         (product.description ? ` | ${product.description}` : "")
     )
     .join("\n");

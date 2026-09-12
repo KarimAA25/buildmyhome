@@ -1,15 +1,8 @@
 import OpenAI, { toFile } from "openai";
 import type { DesignSpecification } from "@buildmyhome/shared";
 import { env } from "../../config/env";
+import { parseDataUrl } from "../../lib/dataUrl";
 import type { ImageGenerationService } from "./ImageGenerationService";
-
-function parseDataUrl(dataUrl: string): { mimeType: string; buffer: Buffer } {
-  const match = dataUrl.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
-  if (!match) {
-    throw new Error("ImageGenerationService: expected a base64 image data URL");
-  }
-  return { mimeType: match[1], buffer: Buffer.from(match[2], "base64") };
-}
 
 function buildPrompt(spec: DesignSpecification, userInstruction: string): string {
   // Note: spec.items is the FULL current/target item list, not a list of

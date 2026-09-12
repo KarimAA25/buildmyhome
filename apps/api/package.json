@@ -7,14 +7,20 @@
     "build": "npm --prefix ../../packages/shared run build && tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "embed-catalog": "tsx scripts/embed-catalog.ts"
+    "embed-catalog": "tsx scripts/embed-catalog.ts",
+    "create-contractor": "tsx scripts/create-contractor.ts",
+    "add-reference-page": "tsx scripts/add-reference-page.ts"
   },
   "dependencies": {
     "@buildmyhome/shared": "*",
     "@fastify/cors": "^10.0.1",
     "@fastify/rate-limit": "^10.1.1",
+    "@supabase/supabase-js": "^2.45.4",
+    "cheerio": "^1.0.0",
     "dotenv": "^16.4.5",
     "fastify": "^5.1.0",
+    "nanoid": "^5.0.7",
+    "nodemailer": "^10.0.8",
     "openai": "^7.8.0",
     "zod": "^3.23.8"
   },

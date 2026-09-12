@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import { env } from "./config/env";
 import { apiSecretHook } from "./middleware/apiSecret";
+import { contractorTokenHook } from "./middleware/contractorToken";
 import { healthRoutes } from "./routes/health";
 import { designRoutes } from "./routes/design";
 
@@ -22,6 +23,7 @@ async function main() {
   });
 
   app.addHook("onRequest", apiSecretHook);
+  app.addHook("onRequest", contractorTokenHook);
 
   await app.register(healthRoutes);
   await app.register(designRoutes);

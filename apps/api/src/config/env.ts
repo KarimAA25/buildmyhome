@@ -14,6 +14,15 @@ const EnvSchema = z.object({
   ALLOWED_ORIGIN: z.string().url(),
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(10_485_760),
   MAX_PROMPT_LENGTH: z.coerce.number().int().positive().default(2000),
+
+  // Stage 2 (CLAUDE2.md)
+  SUPABASE_URL: z.string().url(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
+  SUPABASE_STORAGE_BUCKET: z.string().default("design-images"),
+  MAX_VERSIONS_PER_DESIGN: z.coerce.number().int().positive().default(3),
+  GMAIL_SENDER_ADDRESS: z.string().default(""),
+  GMAIL_APP_PASSWORD: z.string().default(""),
+  EMAIL_FROM_NAME: z.string().default("BuildMyHome"),
 });
 
 export const env = EnvSchema.parse(process.env);

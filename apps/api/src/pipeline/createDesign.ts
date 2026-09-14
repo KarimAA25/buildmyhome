@@ -4,6 +4,7 @@ import { services } from "../container";
 import { generateValidatedImage } from "../services/imageGeneration/generateValidatedImage";
 import { refineDetectedItems } from "./refineDetectedItems";
 import { collectSourceUrls } from "./collectSourceUrls";
+import { fillEstimatedPrices } from "./fillEstimatedPrices";
 import { env } from "../config/env";
 
 export async function createDesign(
@@ -52,7 +53,10 @@ export async function createDesign(
   const groundedSpecification = { ...designSpecification, items: refinedItems };
 
   onProgress?.("CALCULATING_QUOTE");
-  const quote = services.quotation.calculate(groundedSpecification, candidateProducts);
+  const deterministicQuote = services.quotation.calculate(groundedSpecification, candidateProducts);
+  const quote = await fillEstimatedPrices(deterministicQuote, services.priceEstimation, {
+    roomType: roomAnalysis.roomType,
+  });
   const sourceUrls = collectSourceUrls(groundedSpecification, candidateProducts);
 
   const [originalImageRef, generatedImageRef] = await Promise.all([

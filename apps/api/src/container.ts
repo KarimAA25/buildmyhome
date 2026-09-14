@@ -10,6 +10,8 @@ import { LiveContractorPageProvider } from "./services/productSourcing/LiveContr
 import { StubDesignGenerationProvider } from "./services/designGeneration/StubDesignGenerationProvider";
 import { OpenAIDesignGenerationProvider } from "./services/designGeneration/OpenAIDesignGenerationProvider";
 import { DeterministicQuotationProvider } from "./services/quotation/DeterministicQuotationProvider";
+import { StubPriceEstimationProvider } from "./services/priceEstimation/StubPriceEstimationProvider";
+import { OpenAIPriceEstimationProvider } from "./services/priceEstimation/OpenAIPriceEstimationProvider";
 import { StubImageGenerationProvider } from "./services/imageGeneration/StubImageGenerationProvider";
 import { OpenAIImageGenerationProvider } from "./services/imageGeneration/OpenAIImageGenerationProvider";
 import { NoOpImageValidationProvider } from "./services/imageValidation/NoOpImageValidationProvider";
@@ -49,6 +51,7 @@ export const services = {
   productSourcing: hasReasoningConfig ? new LiveContractorPageProvider() : new StubProductSourcingProvider(),
   designGeneration: hasReasoningConfig ? new OpenAIDesignGenerationProvider() : new StubDesignGenerationProvider(),
   quotation: new DeterministicQuotationProvider(),
+  priceEstimation: hasReasoningConfig ? new OpenAIPriceEstimationProvider() : new StubPriceEstimationProvider(),
   imageGeneration: hasImageConfig ? new OpenAIImageGenerationProvider() : new StubImageGenerationProvider(),
   imageValidation: hasReasoningConfig ? new OpenAIImageValidationProvider() : new NoOpImageValidationProvider(),
   imageDiff: hasReasoningConfig ? new OpenAIImageDiffProvider() : new NoOpImageDiffProvider(),

@@ -26,13 +26,15 @@ const RESPONSE_SHAPE = `{
   "notes": string or null
 }`;
 
+const CATALOG_PRODUCT_ID_GUIDANCE = `The candidate products are real items/materials drawn from the contractor's own reference pages — treat them as strong style and material inspiration for this design, not a strict catalog every item must identically match. Design the room to genuinely fit the user's request first; then, whenever an item you're specifying is reasonably similar in spirit to a candidate product (same general category, comparable material/finish/style), set its catalogProductId to that candidate's "id", even if it isn't an identical product — this keeps the design grounded in what the contractor actually offers. Prefer the closest reasonable candidate over null; only use null when nothing in the candidate list is plausibly related to that item. Whichever id you use, copy it EXACTLY, character for character, from the candidate list below — never shorten, reformat, or guess at it.`;
+
 const GENERATE_SYSTEM_PROMPT = `You are an interior design assistant. Given a room analysis, a user's request, and a list of candidate products, produce a design specification.
 Respond with a single JSON object and nothing else, matching this exact shape:
 ${RESPONSE_SHAPE}
 
 Rules:
-- Only use a catalogProductId that exactly matches an "id" from the candidate products list below. If nothing fits, use null.
-- Keep the design grounded in what the room analysis and candidate products actually support — do not invent products that aren't in the candidate list.`;
+- ${CATALOG_PRODUCT_ID_GUIDANCE}
+- Keep the design grounded in what the room analysis actually supports — do not invent products that aren't plausible for the room.`;
 
 const MODIFY_SYSTEM_PROMPT = `You are an interior design assistant revising an existing design specification based on a user's change request.
 Respond with a single JSON object and nothing else — the FULL updated design specification, matching this exact shape:
@@ -40,8 +42,7 @@ ${RESPONSE_SHAPE}
 
 Rules:
 - Preserve items and details from the current specification that the change request doesn't affect.
-- Only use a catalogProductId that exactly matches an "id" from the candidate products list below. If nothing fits, use null.
-- Keep the design grounded in what the candidate products actually support — do not invent products that aren't in the candidate list.`;
+- ${CATALOG_PRODUCT_ID_GUIDANCE}`;
 
 function formatCandidateList(candidateProducts: CatalogProduct[]): string {
   const list = candidateProducts

@@ -29,3 +29,26 @@ export class PreviousVersionNotReadyError extends Error {
     this.name = "PreviousVersionNotReadyError";
   }
 }
+
+// Thrown by applyAstraEdit when the session has already finished (explicit
+// end or idle-timeout auto-finish) — an edit-turn can't apply to a session
+// that's already been quoted and emailed. finishAstraSession itself is
+// idempotent rather than throwing this — a repeat "End Session" click racing
+// the idle timeout just re-returns the existing final result (Stage 3.5 §4).
+export class SessionAlreadyFinishedError extends Error {
+  constructor() {
+    super("This Astra session has already finished");
+    this.name = "SessionAlreadyFinishedError";
+  }
+}
+
+// Thrown by StubAstraRealtimeProvider — unlike the other stub providers
+// (which echo input so the rest of the pipeline works offline), a fake
+// realtime token can't do a real WebRTC handshake, so this is honest about
+// being unusable rather than pretending to work.
+export class AstraNotConfiguredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AstraNotConfiguredError";
+  }
+}

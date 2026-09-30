@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Tabs } from "@/components/Tabs";
 import { GenerateNew } from "@/components/GenerateNew";
 import { GenerateVideo } from "@/components/GenerateVideo";
+import { GenerateAstra } from "@/components/GenerateAstra";
 import { RetrieveOld } from "@/components/RetrieveOld";
 
 // "Generate New" renamed to "Generate Image" — label only, per CLAUDE3.md §1
@@ -11,6 +12,7 @@ import { RetrieveOld } from "@/components/RetrieveOld";
 const TABS = [
   { id: "generate-image", label: "Generate Image" },
   { id: "generate-video", label: "Generate Video" },
+  { id: "generate-astra", label: "Generate using Astra" },
   { id: "retrieve", label: "Retrieve Old" },
 ];
 
@@ -25,6 +27,7 @@ export default function WorkspacePage() {
 
       {activeTab === "generate-image" && <GenerateNew />}
       {activeTab === "generate-video" && <GenerateVideo />}
+      {activeTab === "generate-astra" && <GenerateAstra />}
       {activeTab === "retrieve" && <RetrieveOld />}
     </main>
   );

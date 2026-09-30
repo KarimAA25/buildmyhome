@@ -14,8 +14,18 @@ export class NodemailerGmailProvider implements EmailService {
 
   async sendGenerationNotifications(input: EmailNotificationInput): Promise<void> {
     const quoteText = formatQuoteEmail(input.quote);
-    const subject = `BuildMyHome design #${input.promptNumber} — version ${input.versionNumber}`;
-    const details = `Prompt number: ${input.promptNumber}\nVersion: ${input.versionNumber}\n\n${quoteText}`;
+    const subject =
+      input.versionNumber != null
+        ? `BuildMyHome design #${input.promptNumber} — version ${input.versionNumber}`
+        : `BuildMyHome design #${input.promptNumber}`;
+    const details = [
+      `Prompt number: ${input.promptNumber}`,
+      input.versionNumber != null ? `Version: ${input.versionNumber}` : null,
+      "",
+      quoteText,
+    ]
+      .filter((line) => line !== null)
+      .join("\n");
 
     const send = (to: string, intro: string) =>
       this.transporter.sendMail({

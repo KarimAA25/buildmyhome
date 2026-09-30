@@ -6,6 +6,7 @@ import { apiSecretHook } from "./middleware/apiSecret";
 import { contractorTokenHook } from "./middleware/contractorToken";
 import { healthRoutes } from "./routes/health";
 import { designRoutes } from "./routes/design";
+import { astraRoutes } from "./routes/astra";
 
 async function main() {
   const app = Fastify({
@@ -27,6 +28,7 @@ async function main() {
 
   await app.register(healthRoutes);
   await app.register(designRoutes);
+  await app.register(astraRoutes);
 
   await app.listen({ port: env.PORT, host: "0.0.0.0" });
 }

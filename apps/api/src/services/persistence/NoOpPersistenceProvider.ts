@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type {
+  AttachQuoteInput,
   CreateDesignInput,
   CreateVersionInput,
+  GetLatestVersionOptions,
   LookupCredentials,
   PersistedDesign,
   PersistedVersion,
@@ -22,6 +24,7 @@ export class NoOpPersistenceProvider implements PersistenceService {
       originalImagePath: input.originalImagePath,
       maxVersions: null,
       mediaType: input.mediaType,
+      astraFinishedAt: null,
     };
   }
 
@@ -29,7 +32,7 @@ export class NoOpPersistenceProvider implements PersistenceService {
     return null;
   }
 
-  async getLatestVersion(_designId: string): Promise<PersistedVersion | null> {
+  async getLatestVersion(_designId: string, _opts?: GetLatestVersionOptions): Promise<PersistedVersion | null> {
     return null;
   }
 
@@ -55,6 +58,14 @@ export class NoOpPersistenceProvider implements PersistenceService {
   }
 
   async updateVersionStatus(_input: UpdateVersionStatusInput): Promise<void> {
+    // No-op — nothing is persisted in offline mode, so there's no row to update.
+  }
+
+  async attachQuoteToVersion(_input: AttachQuoteInput): Promise<void> {
+    // No-op — nothing is persisted in offline mode, so there's no row to update.
+  }
+
+  async markAstraFinished(_designId: string): Promise<void> {
     // No-op — nothing is persisted in offline mode, so there's no row to update.
   }
 

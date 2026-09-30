@@ -4,7 +4,9 @@ export interface EmailNotificationInput {
   contractorEmail: string;
   endUserEmail: string;
   promptNumber: string;
-  versionNumber: number;
+  // Null for Astra's finish notification — no version number applies to a
+  // continuous session (Stage 3.5 §4).
+  versionNumber: number | null;
   quote: Quote;
 }
 

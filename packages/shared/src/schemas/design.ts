@@ -145,7 +145,10 @@ export type VersionLimitError = z.infer<typeof VersionLimitErrorSchema>;
 export const DesignLookupRequestSchema = z.object({
   email: EndUserEmailSchema,
   promptNumber: PromptNumberSchema,
-  versionNumber: z.coerce.number().int().positive(),
+  // Optional for all media types (Stage 3.5 §5 rule 8) — image/video default
+  // to the latest version when omitted; astra threads ignore it entirely,
+  // always returning the latest (no version concept is exposed to the user).
+  versionNumber: z.coerce.number().int().positive().optional(),
 });
 export type DesignLookupRequest = z.infer<typeof DesignLookupRequestSchema>;
 
@@ -169,6 +172,18 @@ export const DesignLookupResponseSchema = z.discriminatedUnion("mediaType", [
     // Absent while PROCESSING or FAILED — never a raw generation_error either;
     // that stays server-side only (see routes/design.ts).
     generatedVideo: SignedVideoUrlSchema.optional(),
+  }),
+  z.object({
+    designSpecification: DesignSpecificationSchema,
+    sourceUrls: z.array(z.string().url()),
+    mediaType: z.literal("astra"),
+    // false until an explicit "End Session" or the idle-timeout auto-finish
+    // has run — no version concept is ever exposed for astra (Stage 3.5 §3).
+    sessionFinished: z.boolean(),
+    generatedImage: SignedImageUrlSchema,
+    // Null until the session finishes — quote is computed once, at finish,
+    // never per edit-turn (Stage 3.5 §4/§11 rule 4).
+    quote: QuoteSchema.nullable(),
   }),
 ]);
 export type DesignLookupResponse = z.infer<typeof DesignLookupResponseSchema>;

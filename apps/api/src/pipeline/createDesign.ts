@@ -106,7 +106,7 @@ export async function createDesign(
     endUserEmail: design.endUserEmail,
     promptNumber: design.promptNumber,
     versionNumber: version.versionNumber,
-    quote: version.quote,
+    quote,
   });
 
   return {
@@ -119,7 +119,7 @@ export async function createDesign(
     generationStatus: "COMPLETED",
     designSpecification: version.designSpecification,
     generatedImage: generatedImageRef.signedUrl,
-    quote: version.quote,
+    quote,
     sourceUrls: version.sourceUrls,
   };
 }

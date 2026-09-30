@@ -2,8 +2,10 @@ import type { DesignSpecification, GenerationStatus, MediaType, Quote, QuoteLine
 import { supabase } from "../supabaseClient";
 import type { Database } from "../../types/supabase";
 import type {
+  AttachQuoteInput,
   CreateDesignInput,
   CreateVersionInput,
+  GetLatestVersionOptions,
   LookupCredentials,
   PersistedDesign,
   PersistedVersion,
@@ -36,6 +38,7 @@ function toDesign(row: DesignRow): PersistedDesign {
     originalImagePath: row.original_image_url,
     maxVersions: row.max_versions,
     mediaType: row.media_type as MediaType,
+    astraFinishedAt: row.astra_finished_at,
   };
 }
 
@@ -61,7 +64,7 @@ function toQuote(quoteRow: QuoteRow, itemRows: QuoteItemRow[]): Quote {
   };
 }
 
-function toVersion(versionRow: VersionRow, quote: Quote): PersistedVersion {
+function toVersion(versionRow: VersionRow, quote: Quote | null): PersistedVersion {
   return {
     id: versionRow.id,
     designId: versionRow.design_id,
@@ -113,7 +116,7 @@ export class SupabasePersistenceProvider implements PersistenceService {
     return data ? toDesign(data) : null;
   }
 
-  async getLatestVersion(designId: string): Promise<PersistedVersion | null> {
+  async getLatestVersion(designId: string, opts?: GetLatestVersionOptions): Promise<PersistedVersion | null> {
     const { data: versionRow, error } = await supabase
       .from("design_versions")
       .select()
@@ -124,7 +127,7 @@ export class SupabasePersistenceProvider implements PersistenceService {
     if (error) throw error;
     if (!versionRow) return null;
 
-    return this.attachQuote(versionRow);
+    return this.attachQuote(versionRow, { quoteOptional: opts?.quoteOptional ?? false });
   }
 
   async getVersionCount(designId: string): Promise<number> {
@@ -160,6 +163,13 @@ export class SupabasePersistenceProvider implements PersistenceService {
       .single();
     if (versionError) throw versionError;
 
+    // No quote row for an in-progress Astra edit-turn — quote is computed
+    // once, at session finish, and attached via attachQuoteToVersion instead
+    // (Stage 3.5 §4/§11 rule 4).
+    if (!input.quote) {
+      return toVersion(versionRow, null);
+    }
+
     const { data: quoteRow, error: quoteError } = await supabase
       .from("quotes")
       .insert({
@@ -194,6 +204,44 @@ export class SupabasePersistenceProvider implements PersistenceService {
     return toVersion(versionRow, input.quote);
   }
 
+  async attachQuoteToVersion(input: AttachQuoteInput): Promise<void> {
+    const { data: quoteRow, error: quoteError } = await supabase
+      .from("quotes")
+      .insert({
+        design_version_id: input.versionId,
+        currency: input.quote.currency,
+        total_low: input.quote.totalLow,
+        total_high: input.quote.totalHigh,
+      })
+      .select()
+      .single();
+    if (quoteError) throw quoteError;
+
+    if (input.quote.lineItems.length > 0) {
+      const { error: itemsError } = await supabase.from("quote_items").insert(
+        input.quote.lineItems.map((item) => ({
+          quote_id: quoteRow.id,
+          name: item.name,
+          category: item.category,
+          quantity: item.quantity,
+          unit: item.unit,
+          unit_price: item.unitPrice,
+          total_price: item.lineTotal,
+          pricing_type: item.pricingType,
+          confidence: item.confidence,
+          source_url: item.sourceUrl,
+          assumptions: item.assumptions,
+        }))
+      );
+      if (itemsError) throw itemsError;
+    }
+  }
+
+  async markAstraFinished(designId: string): Promise<void> {
+    const { error } = await supabase.from("designs").update({ astra_finished_at: new Date().toISOString() }).eq("id", designId);
+    if (error) throw error;
+  }
+
   async updateVersionStatus(input: UpdateVersionStatusInput): Promise<void> {
     const { error } = await supabase
       .from("design_versions")
@@ -221,29 +269,40 @@ export class SupabasePersistenceProvider implements PersistenceService {
     if (designError) throw designError;
     if (!designRow) return null;
 
-    const { data: versionRow, error: versionError } = await supabase
-      .from("design_versions")
-      .select()
-      .eq("design_id", designRow.id)
-      .eq("version_number", credentials.versionNumber)
-      .maybeSingle();
+    const mediaType = designRow.media_type as MediaType;
+    // Astra threads have no version concept — always the latest. Image/video
+    // now also default to latest when no version number is given
+    // (Stage 3.5 §5 rule 8, extended beyond astra).
+    const useLatest = mediaType === "astra" || credentials.versionNumber == null;
+
+    const baseQuery = supabase.from("design_versions").select().eq("design_id", designRow.id);
+    const { data: versionRow, error: versionError } = useLatest
+      ? await baseQuery.order("version_number", { ascending: false }).limit(1).maybeSingle()
+      : await baseQuery.eq("version_number", credentials.versionNumber as number).maybeSingle();
     if (versionError) throw versionError;
     if (!versionRow) return null;
 
-    const version = await this.attachQuote(versionRow);
+    const version = await this.attachQuote(versionRow, { quoteOptional: mediaType === "astra" });
     if (!version) return null;
 
     return { design: toDesign(designRow), version };
   }
 
-  private async attachQuote(versionRow: VersionRow): Promise<PersistedVersion | null> {
+  private async attachQuote(versionRow: VersionRow, opts: { quoteOptional: boolean }): Promise<PersistedVersion | null> {
     const { data: quoteRow, error: quoteError } = await supabase
       .from("quotes")
       .select()
       .eq("design_version_id", versionRow.id)
       .maybeSingle();
     if (quoteError) throw quoteError;
-    if (!quoteRow) return null;
+    if (!quoteRow) {
+      // A missing quote row is legitimate for an in-progress Astra
+      // edit-turn — NOT "version not found." For image/video, createVersion()
+      // always inserts a quote row, so a missing one there means corrupted/
+      // legacy data — the existing generic-404 behavior (CLAUDE2 §1 rule 4)
+      // is preserved by still returning null in that case.
+      return opts.quoteOptional ? toVersion(versionRow, null) : null;
+    }
 
     const { data: itemRows, error: itemsError } = await supabase
       .from("quote_items")

@@ -97,7 +97,13 @@ export function GenerateVideo() {
       // A transient failure here isn't the video being unready — that's
       // PROCESSING, not an error — so just keep polling rather than surface it.
       if (!outcome.ok || outcome.data.mediaType !== "video") return;
-      if (outcome.data.generationStatus === "PROCESSING") return;
+      // Captured as a const so the narrowed (video-only) type survives into
+      // the setVersions callback below — TS's control-flow narrowing of
+      // outcome.data itself doesn't persist across a nested closure now that
+      // the lookup response union has a third (astra) member without
+      // generationStatus.
+      const data = outcome.data;
+      if (data.generationStatus === "PROCESSING") return;
 
       clearInterval(interval);
       pollingVersionRef.current = null;
@@ -106,11 +112,9 @@ export function GenerateVideo() {
           v.versionNumber === versionNumber
             ? {
                 ...v,
-                generationStatus: outcome.data.generationStatus,
+                generationStatus: data.generationStatus,
                 generatedVideo:
-                  outcome.data.generationStatus === "COMPLETED" && "generatedVideo" in outcome.data
-                    ? (outcome.data.generatedVideo ?? null)
-                    : null,
+                  data.generationStatus === "COMPLETED" && "generatedVideo" in data ? (data.generatedVideo ?? null) : null,
               }
             : v
         )

@@ -36,6 +36,14 @@ const EnvSchema = z.object({
   MAX_VIDEO_UPLOAD_BYTES: z.coerce.number().int().positive().default(20_971_520),
   RUNWAY_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5_000),
   RUNWAY_POLL_TIMEOUT_MS: z.coerce.number().int().positive().default(600_000),
+
+  // Stage 3.5 (CLAUDE3.5.md) — "Generate using Astra"
+  SUPABASE_STORAGE_BUCKET_ASTRA: z.string().default("design-astra"),
+  OPENAI_REALTIME_MODEL: z.string().default(""),
+  OPENAI_ASTRA_ORCHESTRATION_MODEL: z.string().default(""),
+  OPENAI_IMAGE_EDIT_MODEL_FAST: z.string().default(""),
+  OPENAI_IMAGE_EDIT_MODEL_PRECISE: z.string().default(""),
+  ASTRA_SESSION_IDLE_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(600),
 });
 
 export const env = EnvSchema.parse(process.env);

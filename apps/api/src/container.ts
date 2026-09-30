@@ -27,6 +27,12 @@ import { ConsoleLoggingEmailProvider } from "./services/email/ConsoleLoggingEmai
 import { NodemailerGmailProvider } from "./services/email/NodemailerGmailProvider";
 import { StubVideoGenerationProvider } from "./services/videoGeneration/StubVideoGenerationProvider";
 import { RunwayVideoGenerationProvider } from "./services/videoGeneration/RunwayVideoGenerationProvider";
+import { StubAstraRealtimeProvider } from "./services/astraRealtime/StubAstraRealtimeProvider";
+import { OpenAIAstraRealtimeProvider } from "./services/astraRealtime/OpenAIAstraRealtimeProvider";
+import { StubAstraOrchestrationProvider } from "./services/astraOrchestration/StubAstraOrchestrationProvider";
+import { OpenAIAstraOrchestrationProvider } from "./services/astraOrchestration/OpenAIAstraOrchestrationProvider";
+import { StubAstraImageEditProvider } from "./services/astraImageEdit/StubAstraImageEditProvider";
+import { OpenAIAstraImageEditProvider } from "./services/astraImageEdit/OpenAIAstraImageEditProvider";
 
 // Composition root. Swap a provider here when a real implementation lands —
 // nothing outside this file should know which provider backs a given
@@ -40,6 +46,13 @@ const hasEmbeddingConfig = Boolean(env.OPENAI_API_KEY && env.EMBEDDING_MODEL);
 const hasImageConfig = Boolean(env.OPENAI_API_KEY && env.IMAGE_MODEL);
 const hasEmailConfig = Boolean(env.GMAIL_SENDER_ADDRESS && env.GMAIL_APP_PASSWORD);
 const hasVideoConfig = Boolean(env.RUNWAYML_API_SECRET && env.RUNWAY_VIDEO_MODEL);
+const hasAstraConfig = Boolean(
+  env.OPENAI_API_KEY &&
+    env.OPENAI_REALTIME_MODEL &&
+    env.OPENAI_ASTRA_ORCHESTRATION_MODEL &&
+    env.OPENAI_IMAGE_EDIT_MODEL_FAST &&
+    env.OPENAI_IMAGE_EDIT_MODEL_PRECISE
+);
 
 export const services = {
   vision: hasReasoningConfig ? new OpenAIVisionProvider() : new StubVisionProvider(),
@@ -63,6 +76,9 @@ export const services = {
   email: hasEmailConfig ? new NodemailerGmailProvider() : new ConsoleLoggingEmailProvider(),
   aiUsage: new ConsoleLoggingAIUsageProvider(),
   videoGeneration: hasVideoConfig ? new RunwayVideoGenerationProvider() : new StubVideoGenerationProvider(),
+  astraRealtime: hasAstraConfig ? new OpenAIAstraRealtimeProvider() : new StubAstraRealtimeProvider(),
+  astraOrchestration: hasAstraConfig ? new OpenAIAstraOrchestrationProvider() : new StubAstraOrchestrationProvider(),
+  astraImageEdit: hasAstraConfig ? new OpenAIAstraImageEditProvider() : new StubAstraImageEditProvider(),
 };
 
 // Kept available (not wired above) for the offline/local demo mode mentioned

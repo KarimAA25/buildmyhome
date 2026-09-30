@@ -72,7 +72,7 @@ export async function modifyVideoDesign(
     endUserEmail: design.endUserEmail,
     promptNumber: design.promptNumber,
     versionNumber: version.versionNumber,
-    quote: version.quote,
+    quote,
   });
 
   // The previous version's rendered video is the source — never the
@@ -94,7 +94,7 @@ export async function modifyVideoDesign(
     mediaType: "video",
     generationStatus: "PROCESSING",
     designSpecification: version.designSpecification,
-    quote: version.quote,
+    quote,
     sourceUrls: version.sourceUrls,
   };
 }

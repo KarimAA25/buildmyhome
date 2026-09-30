@@ -1,4 +1,10 @@
-import { DesignNotFoundError, PreviousVersionNotReadyError, VersionLimitReachedError } from "../pipeline/errors";
+import {
+  AstraNotConfiguredError,
+  DesignNotFoundError,
+  PreviousVersionNotReadyError,
+  SessionAlreadyFinishedError,
+  VersionLimitReachedError,
+} from "../pipeline/errors";
 import { InvalidVideoInputError } from "../services/videoGeneration/InvalidVideoInputError";
 
 export function mapPipelineError(err: unknown): { status: number; body: Record<string, unknown> } {
@@ -26,6 +32,12 @@ export function mapPipelineError(err: unknown): { status: number; body: Record<s
       status: 409,
       body: { error: { code: "PREVIOUS_VERSION_NOT_READY", message: "The previous version hasn't finished rendering yet." } },
     };
+  }
+  if (err instanceof SessionAlreadyFinishedError) {
+    return { status: 409, body: { error: { code: "SESSION_ALREADY_FINISHED", message: err.message } } };
+  }
+  if (err instanceof AstraNotConfiguredError) {
+    return { status: 503, body: { error: { code: "ASTRA_NOT_CONFIGURED", message: err.message } } };
   }
   return { status: 502, body: { error: { code: "GENERATION_FAILED", message: "Failed to generate design." } } };
 }

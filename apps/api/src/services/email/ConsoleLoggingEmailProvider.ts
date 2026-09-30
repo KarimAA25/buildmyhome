@@ -6,9 +6,10 @@ import type { EmailNotificationInput, EmailService } from "./EmailService";
 // other AI/external providers.
 export class ConsoleLoggingEmailProvider implements EmailService {
   async sendGenerationNotifications(input: EmailNotificationInput): Promise<void> {
+    const versionLabel = input.versionNumber != null ? `v${input.versionNumber}` : "no version (Astra)";
     console.log(
       `[ConsoleLoggingEmailProvider] would notify contractor + ${input.endUserEmail} ` +
-        `(prompt ${input.promptNumber}, v${input.versionNumber}):\n${formatQuoteEmail(input.quote)}`
+        `(prompt ${input.promptNumber}, ${versionLabel}):\n${formatQuoteEmail(input.quote)}`
     );
   }
 }

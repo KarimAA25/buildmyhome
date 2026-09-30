@@ -15,8 +15,13 @@ export function RetrieveOld() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DesignLookupResponse | null>(null);
 
+  // Version number is optional — omitted, it defaults to the latest version
+  // for image/video and is always ignored for astra threads (Stage 3.5 §5).
   const canRetrieve =
-    email.trim().includes("@") && /^\d{6}$/.test(promptNumber.trim()) && /^\d+$/.test(versionNumber.trim()) && !loading;
+    email.trim().includes("@") &&
+    /^\d{6}$/.test(promptNumber.trim()) &&
+    (versionNumber.trim() === "" || /^\d+$/.test(versionNumber.trim())) &&
+    !loading;
 
   async function handleRetrieve() {
     setLoading(true);
@@ -26,7 +31,7 @@ export function RetrieveOld() {
       const outcome = await lookupDesignAction({
         email: email.trim(),
         promptNumber: promptNumber.trim(),
-        versionNumber: Number(versionNumber),
+        versionNumber: versionNumber.trim() ? Number(versionNumber.trim()) : undefined,
       });
       // Any failure — wrong email, wrong prompt number, or a version that
       // was never generated — renders the exact same generic message.
@@ -69,13 +74,13 @@ export function RetrieveOld() {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-sm">Version number</label>
+        <label className="text-sm">Version number (optional — defaults to latest)</label>
         <input
           type="text"
           inputMode="numeric"
           value={versionNumber}
           onChange={(e) => setVersionNumber(e.target.value.replace(/\D/g, ""))}
-          placeholder="1"
+          placeholder="latest"
           className="rounded border p-2 text-sm font-mono"
         />
       </div>
@@ -94,7 +99,7 @@ export function RetrieveOld() {
       {result && result.mediaType === "image" && (
         <ResultPanel
           result={{
-            versionNumber: Number(versionNumber),
+            versionNumber: versionNumber.trim() ? Number(versionNumber.trim()) : 0,
             designSpecification: result.designSpecification,
             mediaType: "image",
             generatedImage: result.generatedImage,
@@ -108,11 +113,26 @@ export function RetrieveOld() {
       {result && result.mediaType === "video" && (
         <ResultPanel
           result={{
-            versionNumber: Number(versionNumber),
+            versionNumber: versionNumber.trim() ? Number(versionNumber.trim()) : 0,
             designSpecification: result.designSpecification,
             mediaType: "video",
             generationStatus: result.generationStatus,
             generatedVideo: "generatedVideo" in result ? (result.generatedVideo ?? null) : null,
+            quote: result.quote,
+            sourceUrls: result.sourceUrls,
+            changeRequest: null,
+          }}
+        />
+      )}
+
+      {result && result.mediaType === "astra" && (
+        <ResultPanel
+          result={{
+            versionNumber: 0,
+            designSpecification: result.designSpecification,
+            mediaType: "astra",
+            sessionFinished: result.sessionFinished,
+            generatedImage: result.generatedImage,
             quote: result.quote,
             sourceUrls: result.sourceUrls,
             changeRequest: null,

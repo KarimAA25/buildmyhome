@@ -94,7 +94,7 @@ export async function createVideoDesign(
     endUserEmail: design.endUserEmail,
     promptNumber: design.promptNumber,
     versionNumber: 1,
-    quote: version.quote,
+    quote,
   });
 
   const sourceVideoSignedUrl = await services.storage.getSignedUrl(originalVideoRef.path, "video");
@@ -116,7 +116,7 @@ export async function createVideoDesign(
     mediaType: "video",
     generationStatus: "PROCESSING",
     designSpecification: version.designSpecification,
-    quote: version.quote,
+    quote,
     sourceUrls: version.sourceUrls,
   };
 }

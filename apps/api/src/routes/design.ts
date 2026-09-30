@@ -17,7 +17,7 @@ import { startSSE } from "./sse";
 // §1 rule 3 says no additional protection beyond the global default.
 const GENERATION_RATE_LIMIT = { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } };
 
-function requireContractor(request: FastifyRequest, reply: FastifyReply): { id: string; email: string } | null {
+export function requireContractor(request: FastifyRequest, reply: FastifyReply): { id: string; email: string } | null {
   const { contractorId, contractorEmail } = request;
   if (!contractorId || !contractorEmail) {
     reply.code(401).send({ error: { code: "UNAUTHORIZED", message: "Missing or invalid X-Contractor-Token" } });
@@ -146,7 +146,9 @@ export async function designRoutes(app: FastifyInstance) {
       contractorId: contractor.id,
       email: parseResult.data.email,
       promptNumber: parseResult.data.promptNumber,
-      versionNumber: parseResult.data.versionNumber,
+      // Optional now for all media types (Stage 3.5 §5 rule 8) — undefined
+      // means "latest version", represented as null at the persistence layer.
+      versionNumber: parseResult.data.versionNumber ?? null,
     });
 
     // Generic 404 for ANY mismatch — wrong email, wrong prompt number, or a
@@ -157,6 +159,11 @@ export async function designRoutes(app: FastifyInstance) {
 
     if (found.design.mediaType === "image") {
       const generatedImage = await services.storage.getSignedUrl(found.version.generatedImagePath, "image");
+      // Every image version always has a quote (createVersion always inserts
+      // one for this media type) — a missing one here would mean corrupted
+      // data, not a legitimate state, so fail loudly rather than silently
+      // returning null through a schema that doesn't expect it.
+      if (!found.version.quote) throw new Error("lookup: image version is missing its quote");
       return {
         mediaType: "image" as const,
         generationStatus: "COMPLETED" as const,
@@ -167,21 +174,37 @@ export async function designRoutes(app: FastifyInstance) {
       };
     }
 
-    // Video: generatedVideo is only included once COMPLETED. On FAILED, the
-    // real generation_error stays server-side only — this lookup endpoint is
-    // anonymous/unauthenticated-by-design beyond email+promptNumber+version
-    // (CLAUDE2 §1 rule 3), so only the status flag is returned to the client.
-    const base = {
-      mediaType: "video" as const,
-      generationStatus: found.version.generationStatus,
+    if (found.design.mediaType === "video") {
+      // Video: generatedVideo is only included once COMPLETED. On FAILED, the
+      // real generation_error stays server-side only — this lookup endpoint is
+      // anonymous/unauthenticated-by-design beyond email+promptNumber+version
+      // (CLAUDE2 §1 rule 3), so only the status flag is returned to the client.
+      if (!found.version.quote) throw new Error("lookup: video version is missing its quote");
+      const base = {
+        mediaType: "video" as const,
+        generationStatus: found.version.generationStatus,
+        designSpecification: found.version.designSpecification,
+        quote: found.version.quote,
+        sourceUrls: found.version.sourceUrls,
+      };
+      if (found.version.generationStatus === "COMPLETED" && found.version.generatedVideoPath) {
+        const generatedVideo = await services.storage.getSignedUrl(found.version.generatedVideoPath, "video");
+        return { ...base, generatedVideo };
+      }
+      return base;
+    }
+
+    // Astra: always the latest state, regardless of any requested version
+    // number (Stage 3.5 §5). Quote is null until the session has finished —
+    // never a raw generation error, same anonymity rule as video's FAILED case.
+    const generatedImage = await services.storage.getSignedUrl(found.version.generatedImagePath, "astra");
+    return {
+      mediaType: "astra" as const,
+      sessionFinished: found.design.astraFinishedAt != null,
       designSpecification: found.version.designSpecification,
+      generatedImage,
       quote: found.version.quote,
       sourceUrls: found.version.sourceUrls,
     };
-    if (found.version.generationStatus === "COMPLETED" && found.version.generatedVideoPath) {
-      const generatedVideo = await services.storage.getSignedUrl(found.version.generatedVideoPath, "video");
-      return { ...base, generatedVideo };
-    }
-    return base;
   });
 }

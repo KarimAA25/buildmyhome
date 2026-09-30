@@ -6,6 +6,12 @@ import {
   DesignModifyResponseSchema,
   DesignLookupRequestSchema,
   DesignLookupResponseSchema,
+  AstraStartRequestSchema,
+  AstraStartResponseSchema,
+  AstraEditRequestSchema,
+  AstraEditResponseSchema,
+  AstraFinishRequestSchema,
+  AstraFinishResponseSchema,
   type HealthResponse,
   type DesignCreateRequest,
   type DesignCreateResponse,
@@ -13,6 +19,12 @@ import {
   type DesignModifyResponse,
   type DesignLookupRequest,
   type DesignLookupResponse,
+  type AstraStartRequest,
+  type AstraStartResponse,
+  type AstraEditRequest,
+  type AstraEditResponse,
+  type AstraFinishRequest,
+  type AstraFinishResponse,
 } from "@buildmyhome/shared";
 
 // The only module in apps/web allowed to call fetch against apps/api.
@@ -107,9 +119,38 @@ export async function lookupDesign(request: DesignLookupRequest): Promise<Design
   const query = new URLSearchParams({
     email: request.email,
     promptNumber: request.promptNumber,
-    versionNumber: String(request.versionNumber),
+    // Omitted entirely when absent — the backend defaults to the latest
+    // version for image/video and always ignores it for astra (Stage 3.5 §5).
+    ...(request.versionNumber != null ? { versionNumber: String(request.versionNumber) } : {}),
   });
   return apiFetch(`/design/lookup?${query.toString()}`, DesignLookupResponseSchema);
+}
+
+export async function startAstraSession(request: AstraStartRequest): Promise<AstraStartResponse> {
+  AstraStartRequestSchema.parse(request);
+  return apiFetch("/design/astra/start", AstraStartResponseSchema, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+}
+
+export async function applyAstraEdit(request: AstraEditRequest): Promise<AstraEditResponse> {
+  AstraEditRequestSchema.parse(request);
+  return apiFetch("/design/astra/edit", AstraEditResponseSchema, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+}
+
+export async function finishAstraSession(request: AstraFinishRequest): Promise<AstraFinishResponse> {
+  AstraFinishRequestSchema.parse(request);
+  return apiFetch("/design/astra/finish", AstraFinishResponseSchema, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
 }
 
 // Streaming variants return the raw upstream Response so a Route Handler can

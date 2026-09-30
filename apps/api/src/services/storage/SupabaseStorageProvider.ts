@@ -25,7 +25,14 @@ function pathFor(contractorId: string, designId: string, kind: ImageKind, extens
 }
 
 function bucketNameFor(bucket: MediaBucket): string {
-  return bucket === "video" ? env.SUPABASE_VIDEO_STORAGE_BUCKET : env.SUPABASE_STORAGE_BUCKET;
+  switch (bucket) {
+    case "video":
+      return env.SUPABASE_VIDEO_STORAGE_BUCKET;
+    case "astra":
+      return env.SUPABASE_STORAGE_BUCKET_ASTRA;
+    default:
+      return env.SUPABASE_STORAGE_BUCKET;
+  }
 }
 
 export class SupabaseStorageProvider implements StorageService {
@@ -33,9 +40,9 @@ export class SupabaseStorageProvider implements StorageService {
     return supabase.storage.from(bucketNameFor(bucket));
   }
 
-  async store(base64Media: string, contractorId: string, designId: string, kind: ImageKind): Promise<StoredImageRef> {
+  async store(base64Media: string, contractorId: string, designId: string, kind: ImageKind, bucketOverride?: MediaBucket): Promise<StoredImageRef> {
     const { mimeType, buffer } = parseDataUrl(base64Media);
-    const bucket: MediaBucket = mimeType.startsWith("video/") ? "video" : "image";
+    const bucket: MediaBucket = bucketOverride ?? (mimeType.startsWith("video/") ? "video" : "image");
     const path = pathFor(contractorId, designId, kind, extensionFor(mimeType));
 
     const { error: uploadError } = await this.bucket(bucket).upload(path, buffer, {
@@ -70,8 +77,8 @@ export class SupabaseStorageProvider implements StorageService {
     return data.signedUrl;
   }
 
-  async retrieveAsBase64(path: string): Promise<string> {
-    const { data, error } = await this.bucket("image").download(path);
+  async retrieveAsBase64(path: string, bucket: MediaBucket = "image"): Promise<string> {
+    const { data, error } = await this.bucket(bucket).download(path);
     if (error) throw error;
 
     const arrayBuffer = await data.arrayBuffer();

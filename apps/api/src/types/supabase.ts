@@ -150,6 +150,7 @@ export type Database = {
       }
       designs: {
         Row: {
+          astra_finished_at: string | null
           contractor_id: string
           created_at: string
           end_user_email: string
@@ -160,6 +161,7 @@ export type Database = {
           prompt_number: string
         }
         Insert: {
+          astra_finished_at?: string | null
           contractor_id: string
           created_at?: string
           end_user_email: string
@@ -170,6 +172,7 @@ export type Database = {
           prompt_number: string
         }
         Update: {
+          astra_finished_at?: string | null
           contractor_id?: string
           created_at?: string
           end_user_email?: string

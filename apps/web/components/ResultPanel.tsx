@@ -6,7 +6,8 @@ import { SourceAttribution } from "./SourceAttribution";
 interface ResultPanelBaseFields {
   versionNumber: number;
   designSpecification: DesignSpecification;
-  quote: Quote;
+  // Null only for an unfinished Astra session — image/video always have one.
+  quote: Quote | null;
   sourceUrls: string[];
   changeRequest: string | null;
 }
@@ -18,7 +19,7 @@ interface ResultPanelProps {
   // attribution" (singular "image"), not a before/after comparison. This
   // component is still reused as-is (§2d), just without the comparison when
   // there's nothing to compare against. Only ever relevant for mediaType
-  // "image" — video has no equivalent before/after comparison.
+  // "image" — video/astra have no equivalent before/after comparison.
   originalImage?: string | null;
   result:
     | (ResultPanelBaseFields & { mediaType: "image"; generatedImage: string })
@@ -27,17 +28,34 @@ interface ResultPanelProps {
         generationStatus: GenerationStatus;
         // Present only once generationStatus is COMPLETED.
         generatedVideo: string | null;
+      })
+    | (ResultPanelBaseFields & {
+        mediaType: "astra";
+        // False until an explicit "End Session" or the idle-timeout
+        // auto-finish has run — quote stays null until then.
+        sessionFinished: boolean;
+        generatedImage: string;
       });
 }
 
-// Used for both the "Generate Image"/"Generate Video" flows and a successful
-// "Retrieve Old" lookup — CLAUDE2 §2d requires the exact same results view
-// for both, not a separate or reduced display.
+// Used for the "Generate Image"/"Generate Video"/"Generate using Astra" flows
+// and a successful "Retrieve Old" lookup — CLAUDE2 §2d requires the exact
+// same results view for both, not a separate or reduced display.
 export function ResultPanel({ originalImage, result }: ResultPanelProps) {
   return (
     <div className="flex flex-col gap-4 rounded border p-4">
       <div>
-        <h2 className="text-lg font-semibold">Version {result.versionNumber}</h2>
+        {/* No version number is ever shown for Astra — it's a continuous
+            session, not a discrete, addressable version (Stage 3.5 §3).
+            A non-positive versionNumber means "latest, exact number unknown"
+            (e.g. Retrieve Old with the version field left blank). */}
+        <h2 className="text-lg font-semibold">
+          {result.mediaType === "astra"
+            ? "Astra Session Result"
+            : result.versionNumber > 0
+              ? `Version ${result.versionNumber}`
+              : "Latest Version"}
+        </h2>
         {result.changeRequest && (
           <p className="text-xs text-neutral-400">Change requested: &quot;{result.changeRequest}&quot;</p>
         )}
@@ -60,7 +78,13 @@ export function ResultPanel({ originalImage, result }: ResultPanelProps) {
 
       <p className="text-sm">{result.designSpecification.summary}</p>
 
-      <QuoteBreakdown quote={result.quote} />
+      {result.quote ? (
+        <QuoteBreakdown quote={result.quote} />
+      ) : (
+        result.mediaType === "astra" && (
+          <p className="text-sm text-neutral-500">This session hasn&apos;t finished yet — no quote has been generated.</p>
+        )
+      )}
 
       <SourceAttribution sourceUrls={result.sourceUrls} />
     </div>

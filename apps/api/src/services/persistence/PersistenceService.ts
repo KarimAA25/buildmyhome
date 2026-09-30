@@ -12,6 +12,9 @@ export interface PersistedDesign {
   originalImagePath: string;
   maxVersions: number | null;
   mediaType: MediaType;
+  // Astra only — null until an explicit "End Session" or the idle-timeout
+  // auto-finish runs. Always null for image/video designs (Stage 3.5 §4).
+  astraFinishedAt: string | null;
 }
 
 export interface PersistedVersion {
@@ -24,7 +27,10 @@ export interface PersistedVersion {
   generatedImagePath: string;
   designSpecification: DesignSpecification;
   sourceUrls: string[];
-  quote: Quote;
+  // Null for an in-progress Astra edit-turn (no quote is computed per turn —
+  // only once, at session finish, Stage 3.5 §4/§11 rule 4). Always present
+  // for image/video versions; see attachQuote's quoteOptional behavior.
+  quote: Quote | null;
   generationStatus: GenerationStatus;
   generatedVideoPath: string | null;
   videoDurationSeconds: number | null;
@@ -56,11 +62,17 @@ export interface CreateVersionInput {
   userInstruction: string | null;
   sourceUrls: string[];
   aiModel: string | null;
-  quote: Quote;
+  // Null for an Astra edit-turn (no quote per turn — see PersistedVersion.quote).
+  quote: Quote | null;
   // Omitted by image call sites — the DB default ('COMPLETED') applies
   // unchanged, zero existing call-site changes needed. Video call sites pass
   // 'PROCESSING' explicitly.
   generationStatus?: Extract<GenerationStatus, "PROCESSING" | "COMPLETED">;
+}
+
+export interface AttachQuoteInput {
+  versionId: string;
+  quote: Quote;
 }
 
 export interface UpdateVersionStatusInput {
@@ -77,7 +89,18 @@ export interface LookupCredentials {
   contractorId: string;
   email: string;
   promptNumber: string;
-  versionNumber: number;
+  // Null/omitted means "latest version" — always the case for astra threads
+  // (no version concept is exposed), and now also valid for image/video
+  // (Stage 3.5 §5 rule 8, extended beyond astra).
+  versionNumber: number | null;
+}
+
+export interface GetLatestVersionOptions {
+  // False (default) preserves existing behavior for image/video: a missing
+  // quote row means corrupted/legacy data, treated as "not found." Astra
+  // call sites pass true — a missing quote row there is a legitimate
+  // in-progress edit-turn, not an error.
+  quoteOptional?: boolean;
 }
 
 export interface PersistenceService {
@@ -86,12 +109,18 @@ export interface PersistenceService {
   // one requested; the caller (route) must detect and surface that.
   createDesign(input: CreateDesignInput): Promise<PersistedDesign>;
   getDesign(designId: string): Promise<PersistedDesign | null>;
-  getLatestVersion(designId: string): Promise<PersistedVersion | null>;
+  getLatestVersion(designId: string, opts?: GetLatestVersionOptions): Promise<PersistedVersion | null>;
   getVersionCount(designId: string): Promise<number>;
   createVersion(input: CreateVersionInput): Promise<PersistedVersion>;
   // Flips a video version from PROCESSING to COMPLETED/FAILED once the
   // detached Runway render resolves (CLAUDE3 §3 steps 5-6).
   updateVersionStatus(input: UpdateVersionStatusInput): Promise<void>;
+  // Attaches a quote to an EXISTING version row — used at Astra session
+  // finish, which computes the quote once and attaches it to the latest
+  // version rather than minting a new one (Stage 3.5 §3/§4).
+  attachQuoteToVersion(input: AttachQuoteInput): Promise<void>;
+  // Sets designs.astra_finished_at = now() (Stage 3.5 §4).
+  markAstraFinished(designId: string): Promise<void>;
   // Returns null for ANY mismatch (wrong email, wrong prompt number, wrong/
   // never-generated version) — callers must never be able to tell which
   // field was wrong (CLAUDE2 §1 rule 4).

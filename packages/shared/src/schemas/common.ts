@@ -29,7 +29,7 @@ export const ApiErrorSchema = z.object({
 });
 export type ApiError = z.infer<typeof ApiErrorSchema>;
 
-export const MediaTypeSchema = z.enum(["image", "video"]);
+export const MediaTypeSchema = z.enum(["image", "video", "astra"]);
 export type MediaType = z.infer<typeof MediaTypeSchema>;
 
 // Distinct from ProgressState: ProgressState tracks the synchronous SSE

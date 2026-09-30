@@ -200,7 +200,10 @@ export class SupabasePersistenceProvider implements PersistenceService {
       .update({
         generation_status: input.status,
         generated_video_url: input.generatedVideoPath ?? null,
-        video_duration_seconds: input.videoDurationSeconds ?? null,
+        // video_duration_seconds is `int` in the schema — ffprobe's duration
+        // (the value flowing in here) is a float (e.g. 2.56699), so it must
+        // be rounded, not passed through raw.
+        video_duration_seconds: input.videoDurationSeconds != null ? Math.round(input.videoDurationSeconds) : null,
         generation_error: input.generationError ?? null,
       })
       .eq("id", input.versionId);

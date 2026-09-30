@@ -97,7 +97,7 @@ export async function createVideoDesign(
     quote: version.quote,
   });
 
-  const sourceVideoSignedUrl = await services.storage.getSignedUrl(originalVideoRef.path);
+  const sourceVideoSignedUrl = await services.storage.getSignedUrl(originalVideoRef.path, "video");
   void generateVideoInBackground({
     versionId: version.id,
     contractorId,

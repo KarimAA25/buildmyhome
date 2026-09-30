@@ -156,7 +156,7 @@ export async function designRoutes(app: FastifyInstance) {
     }
 
     if (found.design.mediaType === "image") {
-      const generatedImage = await services.storage.getSignedUrl(found.version.generatedImagePath);
+      const generatedImage = await services.storage.getSignedUrl(found.version.generatedImagePath, "image");
       return {
         mediaType: "image" as const,
         generationStatus: "COMPLETED" as const,
@@ -179,7 +179,7 @@ export async function designRoutes(app: FastifyInstance) {
       sourceUrls: found.version.sourceUrls,
     };
     if (found.version.generationStatus === "COMPLETED" && found.version.generatedVideoPath) {
-      const generatedVideo = await services.storage.getSignedUrl(found.version.generatedVideoPath);
+      const generatedVideo = await services.storage.getSignedUrl(found.version.generatedVideoPath, "video");
       return { ...base, generatedVideo };
     }
     return base;

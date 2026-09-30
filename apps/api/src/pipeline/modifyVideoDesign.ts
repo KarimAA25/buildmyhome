@@ -77,7 +77,7 @@ export async function modifyVideoDesign(
 
   // The previous version's rendered video is the source — never the
   // original upload, never a fresh from-scratch generation (CLAUDE3 §9 rule 4).
-  const sourceVideoSignedUrl = await services.storage.getSignedUrl(currentVersion.generatedVideoPath);
+  const sourceVideoSignedUrl = await services.storage.getSignedUrl(currentVersion.generatedVideoPath, "video");
   void generateVideoInBackground({
     versionId: version.id,
     contractorId,

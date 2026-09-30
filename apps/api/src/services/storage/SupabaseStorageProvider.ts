@@ -1,7 +1,7 @@
 import { env } from "../../config/env";
 import { parseDataUrl } from "../../lib/dataUrl";
 import { supabase } from "../supabaseClient";
-import type { ImageKind, StorageService, StoredImageRef } from "./StorageService";
+import type { ImageKind, MediaBucket, StorageService, StoredImageRef } from "./StorageService";
 
 const SIGNED_URL_EXPIRY_SECONDS = 60 * 60; // 1 hour, per CLAUDE2 §6
 
@@ -24,22 +24,27 @@ function pathFor(contractorId: string, designId: string, kind: ImageKind, extens
   return `${contractorId}/${designId}/${fileName}`;
 }
 
+function bucketNameFor(bucket: MediaBucket): string {
+  return bucket === "video" ? env.SUPABASE_VIDEO_STORAGE_BUCKET : env.SUPABASE_STORAGE_BUCKET;
+}
+
 export class SupabaseStorageProvider implements StorageService {
-  private bucket() {
-    return supabase.storage.from(env.SUPABASE_STORAGE_BUCKET);
+  private bucket(bucket: MediaBucket) {
+    return supabase.storage.from(bucketNameFor(bucket));
   }
 
-  async store(base64Image: string, contractorId: string, designId: string, kind: ImageKind): Promise<StoredImageRef> {
-    const { mimeType, buffer } = parseDataUrl(base64Image);
+  async store(base64Media: string, contractorId: string, designId: string, kind: ImageKind): Promise<StoredImageRef> {
+    const { mimeType, buffer } = parseDataUrl(base64Media);
+    const bucket: MediaBucket = mimeType.startsWith("video/") ? "video" : "image";
     const path = pathFor(contractorId, designId, kind, extensionFor(mimeType));
 
-    const { error: uploadError } = await this.bucket().upload(path, buffer, {
+    const { error: uploadError } = await this.bucket(bucket).upload(path, buffer, {
       contentType: mimeType,
       upsert: true,
     });
     if (uploadError) throw uploadError;
 
-    return { path, signedUrl: await this.getSignedUrl(path) };
+    return { path, signedUrl: await this.getSignedUrl(path, bucket) };
   }
 
   async storeVideoFromUrl(sourceUrl: string, contractorId: string, designId: string, versionNumber: number): Promise<StoredImageRef> {
@@ -50,23 +55,23 @@ export class SupabaseStorageProvider implements StorageService {
     const buffer = Buffer.from(await response.arrayBuffer());
     const path = pathFor(contractorId, designId, { version: versionNumber }, "mp4");
 
-    const { error: uploadError } = await this.bucket().upload(path, buffer, {
+    const { error: uploadError } = await this.bucket("video").upload(path, buffer, {
       contentType: "video/mp4",
       upsert: true,
     });
     if (uploadError) throw uploadError;
 
-    return { path, signedUrl: await this.getSignedUrl(path) };
+    return { path, signedUrl: await this.getSignedUrl(path, "video") };
   }
 
-  async getSignedUrl(path: string): Promise<string> {
-    const { data, error } = await this.bucket().createSignedUrl(path, SIGNED_URL_EXPIRY_SECONDS);
+  async getSignedUrl(path: string, bucket: MediaBucket): Promise<string> {
+    const { data, error } = await this.bucket(bucket).createSignedUrl(path, SIGNED_URL_EXPIRY_SECONDS);
     if (error) throw error;
     return data.signedUrl;
   }
 
   async retrieveAsBase64(path: string): Promise<string> {
-    const { data, error } = await this.bucket().download(path);
+    const { data, error } = await this.bucket("image").download(path);
     if (error) throw error;
 
     const arrayBuffer = await data.arrayBuffer();

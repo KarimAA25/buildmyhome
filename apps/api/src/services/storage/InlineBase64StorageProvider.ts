@@ -1,4 +1,4 @@
-import type { ImageKind, StorageService, StoredImageRef } from "./StorageService";
+import type { ImageKind, MediaBucket, StorageService, StoredImageRef } from "./StorageService";
 
 // Kept for a fully offline/local demo mode (CLAUDE2.md intro) — images stay
 // as inline base64, passed straight through instead of touching Supabase.
@@ -7,7 +7,7 @@ export class InlineBase64StorageProvider implements StorageService {
     return { path: base64Image, signedUrl: base64Image };
   }
 
-  async getSignedUrl(path: string): Promise<string> {
+  async getSignedUrl(path: string, _bucket: MediaBucket): Promise<string> {
     return path;
   }
 

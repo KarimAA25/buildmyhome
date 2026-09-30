@@ -105,7 +105,13 @@ export function VideoUploader({
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
     recorder.onstop = async () => {
-      const blob = new Blob(chunksRef.current, { type: mimeType ?? "video/webm" });
+      // Strip any ";codecs=..." suffix (e.g. Android Chrome picks
+      // "video/webm;codecs=vp9") — the data URL's MIME type must be
+      // immediately followed by ";base64," for both the Zod schema and the
+      // backend's parseDataUrl to accept it. The underlying bytes are
+      // unaffected; ffprobe reads the real codec server-side regardless.
+      const blobType = (mimeType ?? "video/webm").split(";")[0];
+      const blob = new Blob(chunksRef.current, { type: blobType });
       const dataUrl = await blobToDataUrl(blob);
       onVideoCaptured(dataUrl);
       stopCamera();

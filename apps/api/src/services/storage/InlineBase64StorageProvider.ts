@@ -14,4 +14,8 @@ export class InlineBase64StorageProvider implements StorageService {
   async retrieveAsBase64(path: string): Promise<string> {
     return path;
   }
+
+  async storeVideoFromUrl(sourceUrl: string, _contractorId: string, _designId: string, _versionNumber: number): Promise<StoredImageRef> {
+    return { path: sourceUrl, signedUrl: sourceUrl };
+  }
 }

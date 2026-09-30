@@ -91,12 +91,28 @@ export function RetrieveOld() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {result && (
+      {result && result.mediaType === "image" && (
         <ResultPanel
           result={{
             versionNumber: Number(versionNumber),
             designSpecification: result.designSpecification,
+            mediaType: "image",
             generatedImage: result.generatedImage,
+            quote: result.quote,
+            sourceUrls: result.sourceUrls,
+            changeRequest: null,
+          }}
+        />
+      )}
+
+      {result && result.mediaType === "video" && (
+        <ResultPanel
+          result={{
+            versionNumber: Number(versionNumber),
+            designSpecification: result.designSpecification,
+            mediaType: "video",
+            generationStatus: result.generationStatus,
+            generatedVideo: "generatedVideo" in result ? (result.generatedVideo ?? null) : null,
             quote: result.quote,
             sourceUrls: result.sourceUrls,
             changeRequest: null,

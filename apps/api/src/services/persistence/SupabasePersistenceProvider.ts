@@ -1,4 +1,4 @@
-import type { DesignSpecification, Quote, QuoteLineItem } from "@buildmyhome/shared";
+import type { DesignSpecification, GenerationStatus, MediaType, Quote, QuoteLineItem } from "@buildmyhome/shared";
 import { supabase } from "../supabaseClient";
 import type { Database } from "../../types/supabase";
 import type {
@@ -8,6 +8,7 @@ import type {
   PersistedDesign,
   PersistedVersion,
   PersistenceService,
+  UpdateVersionStatusInput,
 } from "./PersistenceService";
 
 type DesignRow = Database["public"]["Tables"]["designs"]["Row"];
@@ -34,6 +35,7 @@ function toDesign(row: DesignRow): PersistedDesign {
     promptNumber: row.prompt_number,
     originalImagePath: row.original_image_url,
     maxVersions: row.max_versions,
+    mediaType: row.media_type as MediaType,
   };
 }
 
@@ -69,6 +71,10 @@ function toVersion(versionRow: VersionRow, quote: Quote): PersistedVersion {
     designSpecification: versionRow.design_specification as unknown as DesignSpecification,
     sourceUrls: Array.isArray(versionRow.source_urls) ? (versionRow.source_urls as string[]) : [],
     quote,
+    generationStatus: versionRow.generation_status as GenerationStatus,
+    generatedVideoPath: versionRow.generated_video_url,
+    videoDurationSeconds: versionRow.video_duration_seconds,
+    generationError: versionRow.generation_error,
   };
 }
 
@@ -85,6 +91,7 @@ export class SupabasePersistenceProvider implements PersistenceService {
           end_user_email: normalizeEmail(input.endUserEmail),
           prompt_number: promptNumber,
           original_image_url: input.originalImagePath,
+          media_type: input.mediaType,
         })
         .select()
         .single();
@@ -145,6 +152,9 @@ export class SupabasePersistenceProvider implements PersistenceService {
         user_instruction: input.userInstruction,
         source_urls: input.sourceUrls,
         ai_model: input.aiModel,
+        // Omitted entirely (not passed as undefined) when not provided, so
+        // image call sites get the DB's 'COMPLETED' default unchanged.
+        ...(input.generationStatus ? { generation_status: input.generationStatus } : {}),
       })
       .select()
       .single();
@@ -182,6 +192,19 @@ export class SupabasePersistenceProvider implements PersistenceService {
     }
 
     return toVersion(versionRow, input.quote);
+  }
+
+  async updateVersionStatus(input: UpdateVersionStatusInput): Promise<void> {
+    const { error } = await supabase
+      .from("design_versions")
+      .update({
+        generation_status: input.status,
+        generated_video_url: input.generatedVideoPath ?? null,
+        video_duration_seconds: input.videoDurationSeconds ?? null,
+        generation_error: input.generationError ?? null,
+      })
+      .eq("id", input.versionId);
+    if (error) throw error;
   }
 
   async lookup(credentials: LookupCredentials): Promise<{ design: PersistedDesign; version: PersistedVersion } | null> {

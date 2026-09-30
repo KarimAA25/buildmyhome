@@ -18,3 +18,14 @@ export class VersionLimitReachedError extends Error {
     this.name = "VersionLimitReachedError";
   }
 }
+
+// A video modify call can't hand Runway a source video that doesn't exist
+// yet or isn't finished rendering — the current version must be COMPLETED
+// with a generatedVideoPath before it can be used as the edit source
+// (CLAUDE3 §9 rule 4).
+export class PreviousVersionNotReadyError extends Error {
+  constructor() {
+    super("The previous version is still processing or failed");
+    this.name = "PreviousVersionNotReadyError";
+  }
+}

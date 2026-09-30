@@ -155,13 +155,33 @@ export async function designRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: { code: "NOT_FOUND", message: "No matching design found." } });
     }
 
-    const generatedImage = await services.storage.getSignedUrl(found.version.generatedImagePath);
+    if (found.design.mediaType === "image") {
+      const generatedImage = await services.storage.getSignedUrl(found.version.generatedImagePath);
+      return {
+        mediaType: "image" as const,
+        generationStatus: "COMPLETED" as const,
+        designSpecification: found.version.designSpecification,
+        generatedImage,
+        quote: found.version.quote,
+        sourceUrls: found.version.sourceUrls,
+      };
+    }
 
-    return {
+    // Video: generatedVideo is only included once COMPLETED. On FAILED, the
+    // real generation_error stays server-side only — this lookup endpoint is
+    // anonymous/unauthenticated-by-design beyond email+promptNumber+version
+    // (CLAUDE2 §1 rule 3), so only the status flag is returned to the client.
+    const base = {
+      mediaType: "video" as const,
+      generationStatus: found.version.generationStatus,
       designSpecification: found.version.designSpecification,
-      generatedImage,
       quote: found.version.quote,
       sourceUrls: found.version.sourceUrls,
     };
+    if (found.version.generationStatus === "COMPLETED" && found.version.generatedVideoPath) {
+      const generatedVideo = await services.storage.getSignedUrl(found.version.generatedVideoPath);
+      return { ...base, generatedVideo };
+    }
+    return base;
   });
 }

@@ -6,6 +6,7 @@ import { refineDetectedItems } from "./refineDetectedItems";
 import { collectSourceUrls } from "./collectSourceUrls";
 import { fillEstimatedPrices } from "./fillEstimatedPrices";
 import { env } from "../config/env";
+import { createVideoDesign } from "./createVideoDesign";
 
 export async function createDesign(
   contractorId: string,
@@ -13,12 +14,23 @@ export async function createDesign(
   request: DesignCreateRequest,
   onProgress?: (state: ProgressState) => void
 ): Promise<DesignCreateResponse> {
+  if (request.mediaType === "video") {
+    return createVideoDesign(contractorId, contractorEmail, request, onProgress);
+  }
+  // Guaranteed present by DesignCreateRequestSchema's superRefine when
+  // mediaType is 'image' — asserted here as defense-in-depth and to narrow
+  // the type from string | undefined for the rest of this function.
+  if (!request.originalImage) {
+    throw new Error("createDesign: request.originalImage is required when mediaType is 'image'");
+  }
+  const originalImage = request.originalImage;
+
   // Generated up front so the original image can be uploaded to
   // {contractorId}/{designId}/original.jpg before the designs row exists.
   const designId = randomUUID();
 
   onProgress?.("ANALYZING");
-  const roomAnalysis = await services.vision.analyzeRoom(request.originalImage);
+  const roomAnalysis = await services.vision.analyzeRoom(originalImage);
 
   onProgress?.("SEARCHING_PRODUCTS");
   const candidateProducts = await services.productSourcing.getCandidateProducts(contractorId, {
@@ -36,7 +48,7 @@ export async function createDesign(
   const { image } = await generateValidatedImage(
     services.imageGeneration,
     services.imageValidation,
-    request.originalImage,
+    originalImage,
     designSpecification,
     request.userPrompt,
     env.MAX_IMAGE_GENERATION_RETRIES,
@@ -48,7 +60,7 @@ export async function createDesign(
   // perfectly follow instructions, so the spec's item list can drift from
   // what the customer would actually see and be quoted for.
   onProgress?.("REVIEWING_RESULT");
-  const detectedItems = await services.imageDiff.detectItems(request.originalImage, image, candidateProducts);
+  const detectedItems = await services.imageDiff.detectItems(originalImage, image, candidateProducts);
   const refinedItems = await refineDetectedItems(detectedItems, candidateProducts, services.embedding);
   const groundedSpecification = { ...designSpecification, items: refinedItems };
 
@@ -60,7 +72,7 @@ export async function createDesign(
   const sourceUrls = collectSourceUrls(groundedSpecification, candidateProducts);
 
   const [originalImageRef, generatedImageRef] = await Promise.all([
-    services.storage.store(request.originalImage, contractorId, designId, "original"),
+    services.storage.store(originalImage, contractorId, designId, "original"),
     services.storage.store(image, contractorId, designId, { version: 1 }),
   ]);
 
@@ -70,6 +82,7 @@ export async function createDesign(
     endUserEmail: request.endUserEmail,
     promptNumber: request.promptNumber,
     originalImagePath: originalImageRef.path,
+    mediaType: "image",
   });
 
   const version = await services.persistence.createVersion({
@@ -102,6 +115,8 @@ export async function createDesign(
     // one (CLAUDE2 §2b) — the frontend must detect and display this.
     promptNumber: design.promptNumber,
     versionNumber: 1,
+    mediaType: "image",
+    generationStatus: "COMPLETED",
     designSpecification: version.designSpecification,
     generatedImage: generatedImageRef.signedUrl,
     quote: version.quote,

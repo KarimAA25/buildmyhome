@@ -15,4 +15,8 @@ export interface StorageService {
   // a URL, so a prior version's image has to come back as real bytes to
   // seed the next modify call.
   retrieveAsBase64(path: string): Promise<string>;
+  // Downloads a remote URL's bytes and persists them — used for Runway's
+  // ephemeral video_to_video output, which expires in 24-48h and must never
+  // be exposed to the client or stored as a permanent reference (CLAUDE3 §9.1).
+  storeVideoFromUrl(sourceUrl: string, contractorId: string, designId: string, versionNumber: number): Promise<StoredImageRef>;
 }

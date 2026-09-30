@@ -1,4 +1,5 @@
-import { DesignNotFoundError, VersionLimitReachedError } from "../pipeline/errors";
+import { DesignNotFoundError, PreviousVersionNotReadyError, VersionLimitReachedError } from "../pipeline/errors";
+import { InvalidVideoInputError } from "../services/videoGeneration/InvalidVideoInputError";
 
 export function mapPipelineError(err: unknown): { status: number; body: Record<string, unknown> } {
   if (err instanceof DesignNotFoundError) {
@@ -15,6 +16,15 @@ export function mapPipelineError(err: unknown): { status: number; body: Record<s
           currentVersionCount: err.currentVersionCount,
         },
       },
+    };
+  }
+  if (err instanceof InvalidVideoInputError) {
+    return { status: 400, body: { error: { code: "INVALID_VIDEO_INPUT", message: err.message } } };
+  }
+  if (err instanceof PreviousVersionNotReadyError) {
+    return {
+      status: 409,
+      body: { error: { code: "PREVIOUS_VERSION_NOT_READY", message: "The previous version hasn't finished rendering yet." } },
     };
   }
   return { status: 502, body: { error: { code: "GENERATION_FAILED", message: "Failed to generate design." } } };

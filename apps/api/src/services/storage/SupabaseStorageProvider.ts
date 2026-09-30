@@ -5,8 +5,22 @@ import type { ImageKind, StorageService, StoredImageRef } from "./StorageService
 
 const SIGNED_URL_EXPIRY_SECONDS = 60 * 60; // 1 hour, per CLAUDE2 §6
 
-function pathFor(contractorId: string, designId: string, kind: ImageKind): string {
-  const fileName = kind === "original" ? "original.jpg" : `v${kind.version}.jpg`;
+const EXTENSION_BY_MIME_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+};
+
+function extensionFor(mimeType: string): string {
+  return EXTENSION_BY_MIME_TYPE[mimeType] ?? mimeType.split("/")[1] ?? "bin";
+}
+
+function pathFor(contractorId: string, designId: string, kind: ImageKind, extension: string): string {
+  const fileName = kind === "original" ? `original.${extension}` : `v${kind.version}.${extension}`;
   return `${contractorId}/${designId}/${fileName}`;
 }
 
@@ -17,10 +31,27 @@ export class SupabaseStorageProvider implements StorageService {
 
   async store(base64Image: string, contractorId: string, designId: string, kind: ImageKind): Promise<StoredImageRef> {
     const { mimeType, buffer } = parseDataUrl(base64Image);
-    const path = pathFor(contractorId, designId, kind);
+    const path = pathFor(contractorId, designId, kind, extensionFor(mimeType));
 
     const { error: uploadError } = await this.bucket().upload(path, buffer, {
       contentType: mimeType,
+      upsert: true,
+    });
+    if (uploadError) throw uploadError;
+
+    return { path, signedUrl: await this.getSignedUrl(path) };
+  }
+
+  async storeVideoFromUrl(sourceUrl: string, contractorId: string, designId: string, versionNumber: number): Promise<StoredImageRef> {
+    const response = await fetch(sourceUrl);
+    if (!response.ok) {
+      throw new Error(`storeVideoFromUrl: failed to download source video (${response.status})`);
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const path = pathFor(contractorId, designId, { version: versionNumber }, "mp4");
+
+    const { error: uploadError } = await this.bucket().upload(path, buffer, {
+      contentType: "video/mp4",
       upsert: true,
     });
     if (uploadError) throw uploadError;

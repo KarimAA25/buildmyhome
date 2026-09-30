@@ -25,6 +25,8 @@ import { SupabaseStorageProvider } from "./services/storage/SupabaseStorageProvi
 import { ConsoleLoggingAIUsageProvider } from "./services/aiUsage/ConsoleLoggingAIUsageProvider";
 import { ConsoleLoggingEmailProvider } from "./services/email/ConsoleLoggingEmailProvider";
 import { NodemailerGmailProvider } from "./services/email/NodemailerGmailProvider";
+import { StubVideoGenerationProvider } from "./services/videoGeneration/StubVideoGenerationProvider";
+import { RunwayVideoGenerationProvider } from "./services/videoGeneration/RunwayVideoGenerationProvider";
 
 // Composition root. Swap a provider here when a real implementation lands —
 // nothing outside this file should know which provider backs a given
@@ -37,6 +39,7 @@ const hasReasoningConfig = Boolean(env.OPENAI_API_KEY && env.REASONING_MODEL);
 const hasEmbeddingConfig = Boolean(env.OPENAI_API_KEY && env.EMBEDDING_MODEL);
 const hasImageConfig = Boolean(env.OPENAI_API_KEY && env.IMAGE_MODEL);
 const hasEmailConfig = Boolean(env.GMAIL_SENDER_ADDRESS && env.GMAIL_APP_PASSWORD);
+const hasVideoConfig = Boolean(env.RUNWAYML_API_SECRET && env.RUNWAY_VIDEO_MODEL);
 
 export const services = {
   vision: hasReasoningConfig ? new OpenAIVisionProvider() : new StubVisionProvider(),
@@ -59,6 +62,7 @@ export const services = {
   storage: new SupabaseStorageProvider(),
   email: hasEmailConfig ? new NodemailerGmailProvider() : new ConsoleLoggingEmailProvider(),
   aiUsage: new ConsoleLoggingAIUsageProvider(),
+  videoGeneration: hasVideoConfig ? new RunwayVideoGenerationProvider() : new StubVideoGenerationProvider(),
 };
 
 // Kept available (not wired above) for the offline/local demo mode mentioned

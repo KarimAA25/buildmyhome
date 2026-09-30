@@ -6,6 +6,7 @@ import type {
   PersistedDesign,
   PersistedVersion,
   PersistenceService,
+  UpdateVersionStatusInput,
 } from "./PersistenceService";
 
 // Kept for a fully offline/local demo mode (CLAUDE2.md intro) — nothing is
@@ -20,6 +21,7 @@ export class NoOpPersistenceProvider implements PersistenceService {
       promptNumber: input.promptNumber,
       originalImagePath: input.originalImagePath,
       maxVersions: null,
+      mediaType: input.mediaType,
     };
   }
 
@@ -41,11 +43,19 @@ export class NoOpPersistenceProvider implements PersistenceService {
       designId: input.designId,
       versionNumber: input.versionNumber,
       parentVersionId: input.parentVersionId,
-      generatedImagePath: input.generatedImagePath,
+      generatedImagePath: input.generatedImagePath ?? "",
       designSpecification: input.designSpecification,
       sourceUrls: input.sourceUrls,
       quote: input.quote,
+      generationStatus: input.generationStatus ?? "COMPLETED",
+      generatedVideoPath: null,
+      videoDurationSeconds: null,
+      generationError: null,
     };
+  }
+
+  async updateVersionStatus(_input: UpdateVersionStatusInput): Promise<void> {
+    // No-op — nothing is persisted in offline mode, so there's no row to update.
   }
 
   async lookup(_credentials: LookupCredentials): Promise<{ design: PersistedDesign; version: PersistedVersion } | null> {

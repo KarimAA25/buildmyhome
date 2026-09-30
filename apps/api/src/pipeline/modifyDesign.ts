@@ -7,6 +7,7 @@ import { fillEstimatedPrices } from "./fillEstimatedPrices";
 import { canCreateAnotherVersion } from "./versionLimit";
 import { DesignNotFoundError, VersionLimitReachedError } from "./errors";
 import { env } from "../config/env";
+import { modifyVideoDesign } from "./modifyVideoDesign";
 
 export async function modifyDesign(
   contractorId: string,
@@ -30,6 +31,12 @@ export async function modifyDesign(
   const versionCount = await services.persistence.getVersionCount(design.id);
   if (!canCreateAnotherVersion(design, versionCount)) {
     throw new VersionLimitReachedError(design.maxVersions ?? env.MAX_VERSIONS_PER_DESIGN, versionCount);
+  }
+
+  // mediaType comes from the design's own stored value, never the request
+  // (a modify call carries no mediaType field, per CLAUDE3 §7).
+  if (design.mediaType === "video") {
+    return modifyVideoDesign(contractorId, contractorEmail, request, design, currentVersion, versionCount, onProgress);
   }
 
   onProgress?.("SEARCHING_PRODUCTS");
@@ -102,6 +109,8 @@ export async function modifyDesign(
 
   return {
     versionNumber: version.versionNumber,
+    mediaType: "image",
+    generationStatus: "COMPLETED",
     designSpecification: version.designSpecification,
     generatedImage: generatedImageRef.signedUrl,
     quote: version.quote,

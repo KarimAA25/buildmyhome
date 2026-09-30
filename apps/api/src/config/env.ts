@@ -23,6 +23,17 @@ const EnvSchema = z.object({
   GMAIL_SENDER_ADDRESS: z.string().default(""),
   GMAIL_APP_PASSWORD: z.string().default(""),
   EMAIL_FROM_NAME: z.string().default("BuildMyHome"),
+
+  // Stage 3 (CLAUDE3.md) — Runway Aleph 2.0
+  RUNWAYML_API_SECRET: z.string().default(""),
+  RUNWAY_VIDEO_MODEL: z.string().default(""),
+  MIN_VIDEO_DURATION_SECONDS: z.coerce.number().int().positive().default(2),
+  MAX_VIDEO_DURATION_SECONDS: z.coerce.number().int().positive().default(5),
+  MAX_VIDEO_FPS: z.coerce.number().int().positive().default(30),
+  MAX_VIDEO_RESOLUTION: z.string().default("1080p"),
+  MAX_VIDEO_UPLOAD_BYTES: z.coerce.number().int().positive().default(20_971_520),
+  RUNWAY_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5_000),
+  RUNWAY_POLL_TIMEOUT_MS: z.coerce.number().int().positive().default(600_000),
 });
 
 export const env = EnvSchema.parse(process.env);

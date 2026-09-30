@@ -28,3 +28,13 @@ export const ApiErrorSchema = z.object({
   }),
 });
 export type ApiError = z.infer<typeof ApiErrorSchema>;
+
+export const MediaTypeSchema = z.enum(["image", "video"]);
+export type MediaType = z.infer<typeof MediaTypeSchema>;
+
+// Distinct from ProgressState: ProgressState tracks the synchronous SSE
+// stream for a single request/response cycle. GenerationStatus tracks a
+// design_versions row's async render (Stage 3 video) and outlives the SSE
+// connection — it's what GET /design/lookup polling watches.
+export const GenerationStatusSchema = z.enum(["PROCESSING", "COMPLETED", "FAILED"]);
+export type GenerationStatus = z.infer<typeof GenerationStatusSchema>;

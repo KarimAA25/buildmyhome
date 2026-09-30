@@ -115,7 +115,7 @@ export class LiveContractorPageProvider implements ProductSourcingService {
               type: "text",
               text: `This page is being read for a "${context.roomType}" design request: "${context.requestText}".\n\nPage title: ${page.title}\nPage URL: ${page.url}\n\nPage text:\n${page.text}`,
             },
-            ...page.imageUrls.map((url) => ({ type: "image_url" as const, image_url: { url } })),
+            ...page.imageDataUrls.map((dataUrl) => ({ type: "image_url" as const, image_url: { url: dataUrl } })),
           ],
         },
       ],
